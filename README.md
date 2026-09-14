@@ -3,16 +3,16 @@ A collection of customised GNOME extensions for GNOME Shell and GNOME Nautilus.
 
 ## Feature Showcase
 ### Eclipse DVD Screensaver
-This version supports showing the screensaver on multiple monitors instead of only the main monitors. It additionally hides the cursor when the screensaver is active.
+This version supports showing the screensaver on multiple monitors instead of the main monitor only. It additionally hides the cursor when the screensaver is active.
 
-<!-- TODO: insert video via GitHub here -->
+https://github.com/user-attachments/assets/e9ee64c5-6f92-4dcd-bd6e-b5313b335829
 
 GNOME panels (e.g. notification panel) still appear on top of the screensaver since the screensaver is only a black overlay but this is still much less annoying than the cursor being visible.
 
 ### Desktop Icons NG (DING)
 A simple customisation of the context menu to fit my use + a new entry to open in VSCode directly from the desktop.
 
-<figure align="center">
+<div align="center">
 	<div>
     <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 5px;">
       <img src="media/ding_extension_background_showcase.png" alt="background context menu" style="margin-right: 67px;"/>
@@ -25,7 +25,7 @@ A simple customisation of the context menu to fit my use + a new entry to open i
       <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu"/>
     </div>
   </div>
-</figure>
+</div>
 
 ### Nautilus Python
 A custom Nautilus context menu using nautilus-python. It contains :
@@ -36,12 +36,12 @@ A custom Nautilus context menu using nautilus-python. It contains :
 - "New File" : creates "file" then "file_1" then "file_2"...
 - "Copy Path" : copies the absolute path of all selected items (or current location if background was cliked) to clipboard
 
-<figure align="center">
+<div align="center">
   <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 5px;">
     <img src="media/nautilus_background_custom_menu.png" alt="background context menu"/>
     <img src="media/nautilus_image_custom_menu.png" alt="image context menu"/>
   </div>
-</figure>
+</div>
 
 Unfortunately, the menu cannot be moved outside of the space before last item in the context menu but I can live with it.
 
