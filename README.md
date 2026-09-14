@@ -12,19 +12,16 @@ GNOME panels (e.g. notification panel) still appear on top of the screensaver si
 ### Desktop Icons NG (DING)
 A simple customisation of the context menu to fit my use + a new entry to open in VSCode directly from the desktop.
 
-<div align="center">
-	<div>
-    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 5px;">
-      <img src="media/ding_extension_background_showcase.png" alt="background context menu" style="margin-right: 67px;"/>
-      <img src="media/ding_extension_folder_showcase.png" alt="folder context menu"/>
-    </div>
-	</div>
-  <div>
-    <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 5px;">
-      <img src="media/ding_extension_file_showcase.png" alt="file context menu"/>
-      <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu"/>
-    </div>
-  </div>
+<div style="gap: 10px; padding: 5px;" align="center">
+  <img src="media/ding_extension_background_showcase.png" alt="background context menu" align="top"/>
+  <img src="media/ding_extension_folder_showcase.png" alt="folder context menu" align="top"/>
+</div>
+
+&nbsp;
+
+<div style="gap: 10px; padding: 5px;" align="center">
+  <img src="media/ding_extension_file_showcase.png" alt="file context menu"/>
+  <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu" align="top"/>
 </div>
 
 ### Nautilus Python
@@ -36,11 +33,9 @@ A custom Nautilus context menu using nautilus-python. It contains :
 - "New File" : creates "file" then "file_1" then "file_2"...
 - "Copy Path" : copies the absolute path of all selected items (or current location if background was cliked) to clipboard
 
-<div align="center">
-  <div style="display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 5px;">
-    <img src="media/nautilus_background_custom_menu.png" alt="background context menu"/>
-    <img src="media/nautilus_image_custom_menu.png" alt="image context menu"/>
-  </div>
+<div style="gap: 10px; padding: 5px;" align="center">
+  <img src="media/nautilus_background_custom_menu.png" alt="background context menu" align="top"/>
+  <img src="media/nautilus_image_custom_menu.png" alt="image context menu" align="top"/>
 </div>
 
 Unfortunately, the menu cannot be moved outside of the space before last item in the context menu but I can live with it.
