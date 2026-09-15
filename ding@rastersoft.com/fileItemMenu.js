@@ -130,7 +130,7 @@ var FileItemMenu = class {
         menuStyleContext.add_class('desktopmenu');
         menuStyleContext.add_class('fileitemmenu');
 
-        if (fileItem.isAllSelectable && !this._desktopManager.checkIfSpecialFilesAreSelected() && (selectedItemsNum >= 1)) {
+        if (fileItem.isAllSelectable && !this._desktopManager.checkIfSpecialFilesAreSelected() && (selectedItemsNum >= 2)) {
             this._addElementToMenu(
                 Gettext.ngettext('New Folder with {0} item', 'New Folder with {0} items', selectedItemsNum).replace('{0}', selectedItemsNum),
                 () => {

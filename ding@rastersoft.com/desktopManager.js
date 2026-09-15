@@ -1100,11 +1100,15 @@ var DesktopManager = class {
         this._redoMenuItem.connect('activate', () => this._doRedo());
         this._menu.add(this._redoMenuItem);
 
-        this._menu.add(new Gtk.SeparatorMenuItem());
-
         let selectAll = new Gtk.MenuItem({label: _('Select All')});
         selectAll.connect('activate', () => this._selectAll());
         this._menu.add(selectAll);
+
+        this._menu.add(new Gtk.SeparatorMenuItem());
+
+        let newFile = new Gtk.MenuItem({label: _('New File')});
+        newFile.connect('activate', () => this.doNewFile());
+        this._menu.add(newFile);
 
         // this._addSortingMenu();
 
@@ -1810,6 +1814,37 @@ var DesktopManager = class {
             }
         }
         return null;
+    }
+
+    doNewFile() {
+        let counter = 0;
+        let filename;
+        let file;
+
+        do {
+            filename = counter === 0 ? 'file' : `file_${counter}`;
+            file = this._desktopDir.get_child(filename);
+            counter++;
+        } while (file.query_exists(null));
+
+        try {
+            let outputStream = file.create(Gio.FileCreateFlags.NONE, null);
+            outputStream.close(null);
+
+            let info = new Gio.FileInfo();
+            info.set_attribute_string(
+                'metadata::nautilus-drop-position',
+                `${this._clickX},${this._clickY}`
+            );
+            info.set_attribute_string('metadata::nautilus-icon-position', '');
+            file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+        } catch (e) {
+            console.error(e, `Failed to create file ${filename}`);
+            this.dbusManager.doNotify(
+                _('File Creation Failed'),
+                _('Error while trying to create a File')
+            );
+        }
     }
 
     _newDocument(template) {
