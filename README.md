@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/e9ee64c5-6f92-4dcd-bd6e-b5313b335829
 GNOME panels (e.g. the notification panel) still appear on top of the screensaver since the screensaver is only a black overlay but this is still much less annoying than the cursor being visible.
 
 ### Desktop Icons NG (DING)
-Moves around existing context menu entries to suit my needs and adds an "Open in VSCode" entry to open files and projects directly in VSCode from the desktop.
+Moves around existing context menu entries to match Nautilus context menu as closely as possible and adds an "Open in VSCode" entry to open files and projects directly in VSCode from the desktop.
 
 <div style="gap: 10px; padding: 5px;" align="center">
     <img src="media/ding_extension_background_showcase.png" alt="background context menu" align="top"/>
