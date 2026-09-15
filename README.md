@@ -13,8 +13,8 @@ GNOME panels (e.g. the notification panel) still appear on top of the screensave
 Moves around existing context menu entries to suit my needs and adds an "Open in VSCode" entry to open files and projects directly in VSCode from the desktop.
 
 <div style="gap: 10px; padding: 5px;" align="center">
-  <img src="media/ding_extension_background_showcase.png" alt="background context menu" align="top"/>
-  <img src="media/ding_extension_folder_showcase.png" alt="folder context menu" align="top"/>
+    <img src="media/ding_extension_background_showcase.png" alt="background context menu" align="top"/>
+    <img src="media/ding_extension_folder_showcase.png" alt="folder context menu" align="top"/>
 </div>
 
 &nbsp;
