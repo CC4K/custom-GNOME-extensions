@@ -20,7 +20,6 @@ const GLib = imports.gi.GLib;
 const Gdk = imports.gi.Gdk;
 const Gtk = imports.gi.Gtk;
 const Gio = imports.gi.Gio;
-const ByteArray = imports.byteArray;
 
 const TemplatesScriptsManager = imports.templatesScriptsManager;
 const DesktopIconsUtil = imports.desktopIconsUtil;
@@ -602,19 +601,14 @@ var FileItemMenu = class {
         const title = copy ? _('Select Copy Destination') : _('Select Move Destination');
         const connection = Gio.DBus.session;
         const portalPath = '/org/freedesktop/portal/desktop';
-        const desktopFolder = DesktopIconsUtil.getDesktopDir();
+        const desktopDir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP) || GLib.get_home_dir();
+
         const options = {
             directory: new GLib.Variant('b', true),
             multiple: new GLib.Variant('b', false),
             modal: new GLib.Variant('b', true),
+            current_folder: new GLib.Variant('ay', new TextEncoder().encode(`${desktopDir}\0`)),
         };
-
-        if (desktopFolder) {
-            const uri = `${desktopFolder.get_uri()}\0`;
-            const bytes = Array.from(uri, character => character.charCodeAt(0));
-
-            options.current_folder = new GLib.Variant('ay', bytes);
-        }
 
         const parameters = new GLib.Variant('(ssa{sv})', [
             '',
