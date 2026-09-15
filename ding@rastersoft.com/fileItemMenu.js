@@ -195,13 +195,6 @@ var FileItemMenu = class {
 
             this._addSeparator();
 
-            this._addElementToMenu(
-                _('Open in VSCode'),
-                this._doOpenWithVSCode.bind(this)
-            );
-
-            this._addSeparator();
-
             if (fileItem.attributeCanExecute && !fileItem.isDirectory && !fileItem.isValidDesktopFile && fileItem.execLine && Gio.content_type_can_be_executable(fileItem.attributeContentType)) {
                 let execLine = fileItem.execLine;
                 this._addElementToMenu(_('Run as a program'), () => {
@@ -357,9 +350,16 @@ var FileItemMenu = class {
 
         this._addSeparator();
 
+        this._addElementToMenu(
+            _('Open in VSCode'),
+            this._doOpenWithVSCode.bind(this)
+        );
+
+        this._addSeparator();
+
         if (!fileItem.isStackMarker) {
             this._addElementToMenu(
-                selectedItemsNum > 1 ? _('Common Properties') : _('Properties'),
+                _('Properties'),
                 this._onPropertiesClicked.bind(this)
             );
 
