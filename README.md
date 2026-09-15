@@ -21,7 +21,7 @@ Moves around existing context menu entries to suit my needs and adds an "Open in
 
 <div style="gap: 10px; padding: 5px;" align="center">
     <img src="media/ding_extension_file_showcase.png" alt="file context menu"/>
-    <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu" align="top"/>
+    <img src="media/ding_extension_archive_showcase.png" alt="archive context menu" align="top"/>
 </div>
 
 ### Nautilus Python
