@@ -316,6 +316,13 @@ var FileItemMenu = class {
                 );
             }
 
+            this._addElementToMenu(
+                _('Create Link'),
+                () => {
+                    this._doCreateLinkFromSelection();
+                }
+            );
+
             if (this._desktopManager.getCurrentSelection().every(f => f.isDirectory)) {
                 this._addElementToMenu(
                     Gettext.ngettext(
@@ -570,6 +577,54 @@ var FileItemMenu = class {
             }
         }
         this._desktopManager.unselectAll();
+    }
+
+    _doCreateLinkFromSelection() {
+        const selection = this._desktopManager.getCurrentSelection(false);
+        if (!selection || selection.length === 0) {
+            return;
+        }
+
+        for (let fileItem of selection) {
+            if (!fileItem || fileItem.isSpecial) {
+                continue;
+            }
+
+            const source = fileItem.file;
+            const parent = source.get_parent();
+            if (!parent) {
+                continue;
+            }
+
+            const sourcePath = source.get_path();
+            if (!sourcePath) {
+                continue;
+            }
+
+            let baseName = source.get_basename();
+            if (!baseName) {
+                continue;
+            }
+
+            const baseNameNoExt = baseName.includes('.') ? baseName.slice(0, baseName.lastIndexOf('.')) : baseName;
+            const extension = baseName.includes('.') ? baseName.slice(baseName.lastIndexOf('.')) : '';
+            let linkFile = parent.get_child(`${baseNameNoExt}-link${extension}`);
+            let counter = 1;
+
+            while (linkFile.query_exists(null)) {
+                linkFile = parent.get_child(`${baseNameNoExt}-link${counter}${extension}`);
+                counter++;
+            }
+
+            try {
+                const created = linkFile.make_symbolic_link(sourcePath, null);
+                if (!created) {
+                    console.error('Failed to create symlink for:', sourcePath);
+                }
+            } catch (e) {
+                console.error(e, 'Error while creating symbolic link for:', sourcePath);
+            }
+        }
     }
 
     _doNewFolderFromSelection(clickedItem) {
