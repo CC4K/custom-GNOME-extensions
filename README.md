@@ -3,14 +3,14 @@ A collection of customised GNOME extensions for GNOME Shell and GNOME Nautilus.
 
 ## Feature Showcase
 ### Eclipse DVD Screensaver
-This version supports showing the screensaver on multiple monitors instead of the main monitor only. It additionally hides the cursor when the screensaver is active.
+Adds multi-monitor support and cursor hiding.
 
 https://github.com/user-attachments/assets/e9ee64c5-6f92-4dcd-bd6e-b5313b335829
 
-GNOME panels (e.g. notification panel) still appear on top of the screensaver since the screensaver is only a black overlay but this is still much less annoying than the cursor being visible.
+GNOME panels (e.g. the notification panel) still appear on top of the screensaver since the screensaver is only a black overlay but this is still much less annoying than the cursor being visible.
 
 ### Desktop Icons NG (DING)
-A simple customisation of the context menu to fit my use + a new entry to open in VSCode directly from the desktop.
+Moves around existing context menu entries to suit my needs and adds an "Open in VSCode" entry to open files and projects directly in VSCode from the desktop.
 
 <div style="gap: 10px; padding: 5px;" align="center">
   <img src="media/ding_extension_background_showcase.png" alt="background context menu" align="top"/>
@@ -20,25 +20,25 @@ A simple customisation of the context menu to fit my use + a new entry to open i
 &nbsp;
 
 <div style="gap: 10px; padding: 5px;" align="center">
-  <img src="media/ding_extension_file_showcase.png" alt="file context menu"/>
-  <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu" align="top"/>
+    <img src="media/ding_extension_file_showcase.png" alt="file context menu"/>
+    <img src="media/ding_extension_multiple_showcase.png" alt="multiple selection context menu" align="top"/>
 </div>
 
 ### Nautilus Python
 A custom Nautilus context menu using nautilus-python. It contains :
 
-- "Open in Terminal" : obosolete in Ubuntu 26.04 but still useful for Ubuntu 24.04
+- "Open in Terminal" : obsolete in Ubuntu 26.04 but still useful for Ubuntu 24.04
 - "Open in VSCode" : open folder or file in VSCode
-- "Convert to webp" : only appears on image files
-- "New File" : creates "file" then "file_1" then "file_2"...
-- "Copy Path" : copies the absolute path of all selected items (or current location if background was cliked) to clipboard
+- "Convert to webp" : convert image files to webp format
+- "New File" : create "file" then "file_1" then "file_2"...
+- "Copy Path" : copy the absolute path of all selected items (or current location if background was clicked) to clipboard
 
 <div style="gap: 10px; padding: 5px;" align="center">
-  <img src="media/nautilus_background_custom_menu.png" alt="background context menu" align="top"/>
-  <img src="media/nautilus_image_custom_menu.png" alt="image context menu" align="top"/>
+    <img src="media/nautilus_background_custom_menu.png" alt="background context menu" align="top"/>
+    <img src="media/nautilus_image_custom_menu.png" alt="image context menu" align="top"/>
 </div>
 
-Unfortunately, the menu cannot be moved outside of the space before last item in the context menu but I can live with it.
+Unfortunately, the menu cannot be set above or below the one-before-last section in the context menu but I can live with it.
 
 ## Installation
 ### Eclipse DVD Screensaver
@@ -56,4 +56,4 @@ Unfortunately, the menu cannot be moved outside of the space before last item in
     ```bash
     sudo apt install -y python3-nautilus
     ```
-2. Create a `~/.local/share/nautilus_python/extension/` folder and move `menu-custom.py` in it (the other files are here for reference if you wish to implement them yourself + I don't really need addtional columns in Nautilus but you might)
+2. Create a `~/.local/share/nautilus_python/extension/` folder and move `menu-custom.py` in it (the other files are here for reference if you wish to implement them yourself. It also contains addtional columns options for Nautilus if you wish to use them)
