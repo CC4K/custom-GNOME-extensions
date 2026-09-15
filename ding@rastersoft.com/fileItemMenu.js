@@ -20,6 +20,7 @@ const GLib = imports.gi.GLib;
 const Gdk = imports.gi.Gdk;
 const Gtk = imports.gi.Gtk;
 const Gio = imports.gi.Gio;
+const ByteArray = imports.byteArray;
 
 const TemplatesScriptsManager = imports.templatesScriptsManager;
 const DesktopIconsUtil = imports.desktopIconsUtil;
@@ -130,15 +131,16 @@ var FileItemMenu = class {
         menuStyleContext.add_class('desktopmenu');
         menuStyleContext.add_class('fileitemmenu');
 
+        if (fileItem.isAllSelectable && !this._desktopManager.checkIfSpecialFilesAreSelected() && (selectedItemsNum >= 1)) {
+            this._addElementToMenu(
+                Gettext.ngettext('New Folder with {0} item', 'New Folder with {0} items', selectedItemsNum).replace('{0}', selectedItemsNum),
+                () => {
+                    this._doNewFolderFromSelection(this._currentFileItem);
+                }
+            );
 
-        this._addElementToMenu(
-            Gettext.ngettext('New Folder with {0} item', 'New Folder with {0} items', selectedItemsNum).replace('{0}', selectedItemsNum),
-            () => {
-                this._doNewFolderFromSelection(this._currentFileItem);
-            }
-        );
-
-        this._addSeparator();
+            this._addSeparator();
+        }
 
         if (!fileItem.isStackMarker) {
             this._addElementToMenu(
@@ -250,6 +252,16 @@ var FileItemMenu = class {
                 () => {
                     this._desktopManager.doCopy();
                 }
+            ).set_sensitive(!allowCutCopyTrash);
+
+            this._addElementToMenu(
+                _('Move To…'),
+                () => this._moveOrCopySelection(false)
+            ).set_sensitive(!allowCutCopyTrash);
+
+            this._addElementToMenu(
+                _('Copy To…'),
+                () => this._moveOrCopySelection(true)
             ).set_sensitive(!allowCutCopyTrash);
 
             if (fileItem.isValidDesktopFile && !this._desktopManager.writableByOthers && !fileItem.writableByOthers && (selectedItemsNum == 1)) {
@@ -577,6 +589,97 @@ var FileItemMenu = class {
             }
         }
         this._desktopManager.unselectAll();
+    }
+
+    _moveOrCopySelection(copy) {
+        const selection = this._desktopManager.getCurrentSelection(false)
+            .filter(item => item && !item.isSpecial);
+
+        if (selection.length === 0) {
+            return;
+        }
+
+        const title = copy ? _('Select Copy Destination') : _('Select Move Destination');
+        const connection = Gio.DBus.session;
+        const portalPath = '/org/freedesktop/portal/desktop';
+        const desktopFolder = DesktopIconsUtil.getDesktopDir();
+        const options = {
+            directory: new GLib.Variant('b', true),
+            multiple: new GLib.Variant('b', false),
+            modal: new GLib.Variant('b', true),
+        };
+
+        if (desktopFolder) {
+            const uri = `${desktopFolder.get_uri()}\0`;
+            const bytes = Array.from(uri, character => character.charCodeAt(0));
+
+            options.current_folder = new GLib.Variant('ay', bytes);
+        }
+
+        const parameters = new GLib.Variant('(ssa{sv})', [
+            '',
+            title,
+            options,
+        ]);
+
+        connection.call(
+            'org.freedesktop.portal.Desktop',
+            portalPath,
+            'org.freedesktop.portal.FileChooser',
+            'OpenFile',
+            parameters,
+            null,
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null,
+            (proxy, result) => {
+                try {
+                    const reply = connection.call_finish(result);
+                    const [requestPath] = reply.deep_unpack();
+
+                    const signalId = connection.signal_subscribe(
+                        'org.freedesktop.portal.Desktop',
+                        'org.freedesktop.portal.Request',
+                        'Response',
+                        requestPath,
+                        null,
+                        Gio.DBusSignalFlags.NONE,
+                        (conn, sender, path, iface, signal, parameters) => {
+                            const [response, results] = parameters.deep_unpack();
+
+                            conn.signal_unsubscribe(signalId);
+
+                            if (response !== 0) {
+                                return;
+                            }
+
+                            const uris = results.uris?.deep_unpack?.() ?? results.uris;
+                            if (!uris || uris.length !== 1) {
+                                return;
+                            }
+
+                            const sourceUris = selection.map(item => item.file.get_uri());
+
+                            if (copy) {
+                                DBusUtils.RemoteFileOperations.CopyURIsRemote(
+                                    sourceUris,
+                                    uris[0],
+                                    true
+                                );
+                            } else {
+                                DBusUtils.RemoteFileOperations.MoveURIsRemote(
+                                    sourceUris,
+                                    uris[0],
+                                    true
+                                );
+                            }
+                        }
+                    );
+                } catch (error) {
+                    console.error(error, 'Unable to open the file chooser portal.');
+                }
+            }
+        );
     }
 
     _doCreateLinkFromSelection() {
