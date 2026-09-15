@@ -143,7 +143,7 @@ var FileItemMenu = class {
 
         if (!fileItem.isStackMarker) {
             this._addElementToMenu(
-                selectedItemsNum > 1 ? _('Open All...') : _('Open'),
+                selectedItemsNum > 1 ? _('Open All…') : _('Open'),
                 this._doMultiOpen.bind(this)
             );
         }
@@ -197,7 +197,7 @@ var FileItemMenu = class {
                     );
                 }
                 this._addElementToMenu(
-                    _('Extract To...'),
+                    _('Extract To…'),
                     () => {
                         this._extractFileFromSelection(false);
                     }
@@ -206,7 +206,7 @@ var FileItemMenu = class {
 
             if (!fileItem.isDirectory) {
                 this._addElementToMenu(
-                    selectedItemsNum > 1 ? _('Open All With Other Application...') : _('Open With Other Application'),
+                    selectedItemsNum > 1 ? _('Open All With…') : _('Open With…'),
                     this._doOpenWith.bind(this)
                 ).set_sensitive(selectedItemsNum > 0);
 
@@ -313,7 +313,7 @@ var FileItemMenu = class {
 
             // if (!fileItem.isDirectory) {
             //     this._addElementToMenu(
-            //         _('Send to...'),
+            //         _('Send to…'),
             //         this._mailFilesFromSelection.bind(this)
             //     );
             // }
