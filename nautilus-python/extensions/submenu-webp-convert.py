@@ -10,7 +10,7 @@ class ConvertToWebpMenuProvider(GObject.GObject, Nautilus.MenuProvider):
         for file in files:
             file_path = unquote(urlparse(file.get_uri()).path)
             image = Image.open(file_path)
-            image.save(f"{file_path}.webp", format="webp")
+            image.save(f"{file_path.rsplit('.', 1)[0]}.webp", format="webp")
 
     def get_file_items(self, files: List[Nautilus.FileInfo]) -> List[Nautilus.MenuItem]:
         for file in files:

@@ -31,7 +31,7 @@ class CustomNautilusMenu(GObject.GObject, Nautilus.MenuProvider):
         for file in files:
             file_path = unquote(urlparse(file.get_uri()).path)
             image = Image.open(file_path)
-            image.save(f"{file_path}.webp", format="webp")
+            image.save(f"{file_path.rsplit('.', 1)[0]}.webp", format="webp")
 
     def create_file(self, current_folder: Nautilus.FileInfo) -> None:
         folder_path = current_folder.get_location().get_path()
