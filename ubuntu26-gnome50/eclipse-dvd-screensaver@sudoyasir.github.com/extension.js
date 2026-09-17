@@ -29,6 +29,9 @@ export default class EclipseDVDExtension extends Extension {
         // Cursor tracking (to show/hide cursor)
         this._cursorTracker = null;
         this._cursorWasHidden = false;
+        this._cursorInhibited = false;
+        this._seat = null;
+        this._focusInhibited = false;
     }
 
     enable() {
@@ -267,10 +270,11 @@ export default class EclipseDVDExtension extends Extension {
         try {
             this._cursorTracker = global.backend.get_cursor_tracker();
         } catch (e) {
+            console.error('Eclipse: Failed to get cursor tracker: ' + e.message);
             try {
                 this._cursorTracker = Meta.CursorTracker.get_for_display(global.display);
             } catch (e2) {
-                console.error('Eclipse: Failed to track cursor');
+                console.error('Eclipse: Failed to track cursor: ' + e2.message);
                 // if we can't track the cursor => don't even try
                 this._cursorTracker = null;
                 return;
@@ -278,27 +282,59 @@ export default class EclipseDVDExtension extends Extension {
         }
 
         try {
-            // this._cursorTracker.set_pointer_visible(false);
-            // REMOVED in GNOME 49 : https://gjs.guide/extensions/upgrading/gnome-shell-49.html#meta-cursortracker
-            this._cursorTracker.inhibit_cursor_visibility();
-            this._cursorWasHidden = true;
+            this._seat = Clutter.get_default_backend().get_default_seat();
+            if (this._seat && typeof this._seat.inhibit_unfocus === 'function') {
+                this._seat.inhibit_unfocus();
+                this._focusInhibited = true;
+            }
         } catch (e) {
-            console.error('Eclipse: Failed to hide cursor');
+            console.error('Eclipse: Failed to inhibit seat unfocus: ' + e.message);
+        }
+
+        // Meta.CursorTracker.set_pointer_visible() replaced in GNOME 49 to inhibit/uninhibit counter: inhibit_cursor_visibility() / uninhibit_cursor_visibility()
+        // set_pointer_visible() no longer exists
+        // Feature-detect to work with both old and new Shell versions
+        try {
+            if (typeof this._cursorTracker.inhibit_cursor_visibility === 'function') {
+                this._cursorTracker.inhibit_cursor_visibility();
+                this._cursorInhibited = true;
+            } else if (typeof this._cursorTracker.set_pointer_visible === 'function') {
+                this._cursorTracker.set_pointer_visible(false);
+                this._cursorWasHidden = true;
+            } else {
+                console.error('Eclipse: No known cursor-hiding API available');
+            }
+        } catch (e) {
+            console.error('Eclipse: Failed to hide cursor: ' + e.message);
         }
     }
-
+ 
     _showCursor() {
-        if (this._cursorTracker && this._cursorWasHidden) {
+        if (this._cursorTracker) {
             try {
-                // this._cursorTracker.set_pointer_visible(true);
-                // REMOVED in GNOME 49 : https://gjs.guide/extensions/upgrading/gnome-shell-49.html#meta-cursortracker
-                this._cursorTracker.uninhibit_cursor_visibility();
+                if (this._cursorInhibited && typeof this._cursorTracker.uninhibit_cursor_visibility === 'function') {
+                    this._cursorTracker.uninhibit_cursor_visibility();
+                } else if (this._cursorWasHidden && typeof this._cursorTracker.set_pointer_visible === 'function') {
+                    this._cursorTracker.set_pointer_visible(true);
+                }
             } catch (e) {
-                // Silently fail
+                console.error('Eclipse: Failed to show cursor: ' + e.message);
             }
         }
+
+        if (this._focusInhibited && this._seat && typeof this._seat.uninhibit_unfocus === 'function') {
+            try {
+                this._seat.uninhibit_unfocus();
+            } catch (e) {
+                console.error('Eclipse: Failed to uninhibit seat unfocus: ' + e.message);
+            }
+        }
+
         this._cursorWasHidden = false;
+        this._cursorInhibited = false;
+        this._focusInhibited = false;
         this._cursorTracker = null;
+        this._seat = null;
     }
 
     _loadColors() {
