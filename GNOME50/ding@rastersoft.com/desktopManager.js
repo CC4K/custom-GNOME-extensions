@@ -18,9 +18,11 @@
 /* exported DesktopManager */
 'use strict';
 const GLib = imports.gi.GLib;
+const GLibUnix = imports.gi.GLibUnix;
 const Gtk = imports.gi.Gtk;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
+const GioUnix = imports.gi.GioUnix;
 const ByteArray = imports.byteArray;
 
 const FileItem = imports.fileItem;
@@ -37,6 +39,7 @@ const TemplatesScriptsManager = imports.templatesScriptsManager;
 const Thumbnails = imports.thumbnails;
 const FileItemMenu = imports.fileItemMenu;
 const AutoAr = imports.autoAr;
+const SignalManager = imports.signalManager;
 
 const Gettext = imports.gettext.domain('ding');
 
@@ -45,6 +48,7 @@ const _ = Gettext.gettext;
 var DesktopManager = class {
     constructor(mainApp, dbusManager, desktopList, codePath, asDesktop, primaryIndex) {
         this.mainApp = mainApp;
+        this._lastSelected = null;
         this.using_X11 = Gdk.Display.get_default().constructor.$gtype.name === 'GdkX11Display';
         if (asDesktop) {
             this.mainApp.hold(); // Don't close the application if there are no desktops
@@ -71,17 +75,6 @@ var DesktopManager = class {
         this._selectedFiles = null;
         this._popupCounter = 0;
 
-        this._premultiplied = false;
-        try {
-            for (let f of Prefs.mutterSettings.get_strv('experimental-features')) {
-                if (f == 'scale-monitor-framebuffer') {
-                    this._premultiplied = true;
-                    break;
-                }
-            }
-        } catch (e) {
-        }
-
         this.dbusManager = dbusManager;
         this.autoAr = new AutoAr.AutoAr(this);
 
@@ -101,7 +94,7 @@ var DesktopManager = class {
         this._clickY = 0;
         this._dragList = null;
         this.dragItem = null;
-        this.thumbnailLoader = new Thumbnails.ThumbnailLoader(codePath);
+        this.thumbnailLoader = new Thumbnails.ThumbnailLoader(this, codePath);
         this._codePath = codePath;
         this._asDesktop = asDesktop;
         this._desktopList = desktopList;
@@ -116,15 +109,15 @@ var DesktopManager = class {
         this._monitorDesktopDir.connect('changed', (obj, file, otherFile, eventType) => this._updateDesktopIfChanged(file, otherFile, eventType));
 
         this.fileItemMenu = new FileItemMenu.FileItemMenu(this);
-        if (Prefs.schemaGnomeDarkSettings) {
+        if (Prefs.schemaGnomeInterface) {
             if (this._checkApplyDarkModeSetting()) {
-                Prefs.schemaGnomeDarkSettings.connect('changed', (obj, key) => {
-                    if (key === 'color-scheme') {
-                        this._checkApplyDarkModeSetting();
-                    }
+                Prefs.schemaGnomeInterface.connect('changed::color-scheme', (obj, key) => {
+                    this._checkApplyDarkModeSetting();
+                    this._setSelectionColor();
                 });
             }
         }
+        Prefs.a11YInterface?.connect('changed::high-contrast', () => this._setSelectionColor());
         this._showHidden = Prefs.gtkSettings.get_boolean('show-hidden');
         this.showDropPlace = Prefs.desktopSettings.get_boolean('show-drop-place');
         this.useNemo = Prefs.desktopSettings.get_boolean('use-nemo');
@@ -261,7 +254,8 @@ var DesktopManager = class {
         }
         this._pendingDropFiles = {};
         if (this._asDesktop) {
-            this._sigtermID = GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, 15, () => {
+            const signalAdd = GLibUnix.signal_add ?? GLibUnix.signal_add_full;
+            this._sigtermID = signalAdd(GLib.PRIORITY_DEFAULT, 15, () => {
                 GLib.source_remove(this._sigtermID);
                 for (let desktop of this._desktops) {
                     desktop.destroy();
@@ -350,7 +344,7 @@ var DesktopManager = class {
                 (area.y != area2.y) ||
                 (area.width != area2.width) ||
                 (area.height != area2.height) ||
-                (area.zoom != area2.zoom) ||
+                (area.scaleFactor !== area2.scaleFactor) ||
                 (area.monitorIndex != area2.monitorIndex)) {
                 monitorschanged.push(index);
                 gridschanged.push(index);
@@ -399,7 +393,7 @@ var DesktopManager = class {
             } else {
                 desktopName = `DING ${desktop.monitorIndex + 1}`;
             }
-            this._desktops.push(new DesktopGrid.DesktopGrid(this, desktopName, desktop, this._asDesktop, this._premultiplied));
+            this._desktops.push(new DesktopGrid.DesktopGrid(this, desktopName, desktop, this._asDesktop));
         }
     }
 
@@ -419,9 +413,26 @@ var DesktopManager = class {
     }
 
     _setSelectionColor() {
-        this.selectColor = this._styleContext.get_background_color(Gtk.StateFlags.SELECTED);
+        this.selectColor = this._styleContext.get_color(Gtk.StateFlags.NORMAL);
+        const highContrast = !!Prefs.a11YInterface?.get_boolean('high-contrast');
+        // FIXME: In Gtk3 there's no such thing as dark mode and high contrast,
+        // so we consider it always light if high contrast is set.
+        // This can change when gtk4 will be used.
+        const darkMode = !highContrast && Prefs.schemaGnomeInterface?.get_string('color-scheme') === 'prefer-dark';
+        this.borderColor = darkMode ?
+            new Gdk.RGBA({red: 0, green: 0, blue: 0, alpha: highContrast ? 0.9 : 0.5}) :
+            new Gdk.RGBA({red: 1, green: 1, blue: 1, alpha: highContrast ? 0.9 : 0.5});
+
         let style = `.desktop-icons-selected {
-            background-color: rgba(${this.selectColor.red * 255},${this.selectColor.green * 255}, ${this.selectColor.blue * 255}, 0.6);
+            background-color: rgba(${this.selectColor.red * 255},${this.selectColor.green * 255}, ${this.selectColor.blue * 255}, ${highContrast ? 0.7: 0.2});
+            box-shadow: 0 0 0 1px rgba(${this.borderColor.red * 255},${this.borderColor.green * 255}, ${this.borderColor.blue * 255}, ${this.borderColor.alpha});
+        }
+        .desktop-icons-keyboard-selected:not(:backdrop) {
+            background-color: rgba(${this.selectColor.red * 255},${this.selectColor.green * 255}, ${this.selectColor.blue * 255}, ${highContrast ? 0.7: 0.2});
+            border-color: rgba(${this.borderColor.red * 255},${this.borderColor.green * 255},${this.borderColor.blue * 255}, ${this.borderColor.alpha});
+        }
+        .file-item-hover {
+            background-color: rgba(${this.selectColor.red * 255},${this.selectColor.green * 255}, ${this.selectColor.blue * 255}, ${highContrast ? 0.5 : 0.15});
         }`;
         this._cssProviderSelection.load_from_data(style);
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), this._cssProviderSelection, 600);
@@ -430,7 +441,7 @@ var DesktopManager = class {
     _checkApplyDarkModeSetting() {
         try {
             let displayGtkSettings = Gtk.Settings.get_for_screen(Gdk.Screen.get_default());
-            displayGtkSettings.gtk_application_prefer_dark_theme = Prefs.schemaGnomeDarkSettings.get_string('color-scheme') === 'prefer-dark';
+            displayGtkSettings.gtk_application_prefer_dark_theme = Prefs.schemaGnomeInterface.get_string('color-scheme') === 'prefer-dark';
             return true;
         } catch (e) {
             return false;
@@ -792,36 +803,92 @@ var DesktopManager = class {
             console.log("Mismatched hidePopup() and showPopup() calls");
     }
 
+    _getTopLeftIcon() {
+        if (this._fileList.length == 0) {
+            return null;
+        }
+        let currentCoords = null;
+        let currentItem = null;
+        for (let item of this._fileList) {
+            const newCoords = item.getCoordinates();
+            if ((currentCoords === null) || (newCoords[0] < currentCoords[0]) || (newCoords[1] < currentCoords[1])) {
+                currentCoords = newCoords;
+                currentItem = item;
+            }
+        }
+        return currentItem;
+    }
+
+    _getBottomRightIcon() {
+        if (this._fileList.length == 0) {
+            return null;
+        }
+        let currentCoords = null;
+        let currentItem = null;
+        for (let item of this._fileList) {
+            const newCoords = item.getCoordinates();
+            if ((currentCoords === null) || (newCoords[0] > currentCoords[0]) || (newCoords[1] > currentCoords[1])) {
+                currentCoords = newCoords;
+                currentItem = item;
+            }
+        }
+        return currentItem;
+    }
+
+    _setIconAsSelected(icon) {
+        this._fileList.forEach(fileItem => fileItem.isKeyboardSelected = fileItem === icon);
+    }
+
+    _getLastKeyboardIcon() {
+        if ((this._lastSelected !== null) && this._fileList.includes(this._lastSelected)) {
+            this._setIconAsSelected(this._lastSelected);
+            return this._lastSelected;
+        }
+        return null;
+    }
+
+    _getCurrentKeyboardIcon() {
+        let currentKeyboardIcon = null;
+
+        for (let fileItem of this._fileList) {
+            if ((currentKeyboardIcon === null) && (fileItem.isKeyboardSelected)) {
+                currentKeyboardIcon = fileItem;
+            } else {
+                if (fileItem.isKeyboardSelected) {
+                    fileItem.isKeyboardSelected = false;
+                }
+            }
+        }
+        return currentKeyboardIcon;
+    }
+
     onKeyRelease(event, grid) {
         if (this._popupCounter != 0)
             return false;
-        let symbol = event.get_keyval()[1];
-        let selection = this.getCurrentSelection(false);
+        const isCtrl = (event.get_state()[1] & Gdk.ModifierType.CONTROL_MASK) != 0;
+        const isShift = (event.get_state()[1] & Gdk.ModifierType.SHIFT_MASK) != 0;
+        const symbol = event.get_keyval()[1];
         if ((symbol == Gdk.KEY_Left) || (symbol == Gdk.KEY_Right) ||
-        (symbol == Gdk.KEY_Up) || (symbol == Gdk.KEY_Down)) {
-            if (!selection) {
-                selection = this._fileList;
-            }
-            if (!selection) {
-                return false;
-            }
-            let selected = selection[0];
-            let selectedCoordinates = selected.getCoordinates();
-            this.unselectAll();
-            if (selection.length > 1) {
-                for (let item of selection) {
-                    let itemCoordinates = item.getCoordinates();
-                    if (itemCoordinates[0] > selectedCoordinates[0]) {
-                        continue;
-                    }
-                    if ((itemCoordinates[0] < selectedCoordinates[0]) ||
-                        (itemCoordinates[1] < selectedCoordinates[1])) {
-                        selected = item;
-                        selectedCoordinates = itemCoordinates;
-                        continue;
-                    }
+           (symbol == Gdk.KEY_Up) || (symbol == Gdk.KEY_Down)) {
+            let selected = this._getCurrentKeyboardIcon();
+            // if there is no selected icon, select the last selected icon
+            if (!selected) {
+                selected = this._getLastKeyboardIcon();
+                if (selected) {
+                    return false;
                 }
             }
+            // if there is no last selected, or the last selected isn't in the desktop
+            // (for example, because it was deleted), select the top-left icon.
+            if (!selected) {
+                selected = this._getTopLeftIcon();
+                if (selected) {
+                    selected.isKeyboardSelected = true;
+                }
+                this._lastSelected = selected;
+                return false;
+            }
+            let selectedCoordinates = selected.getCoordinates();
             let index;
             let multiplier;
             switch (symbol) {
@@ -857,21 +924,42 @@ var DesktopManager = class {
             }
             if (newItem === null) {
                 newItem = selected;
+            } else {
+                selected.isKeyboardSelected = false;
+                if (isCtrl || isShift) {
+                    selected.setSelected();
+                }
             }
-            newItem.setSelected();
+            newItem.isKeyboardSelected = true;
+            this._lastSelected = newItem;
             return false;
         }
+        return false;
     }
 
-    onKeyPress(event, grid) {
-        if (this._popupCounter != 0)
+    onKeyPress(window, event, grid) {
+        if (this._popupCounter != 0) {
             return false;
-        let symbol = event.get_keyval()[1];
-        let isCtrl = (event.get_state()[1] & Gdk.ModifierType.CONTROL_MASK) != 0;
-        let isShift = (event.get_state()[1] & Gdk.ModifierType.SHIFT_MASK) != 0;
-        let isAlt = (event.get_state()[1] & Gdk.ModifierType.MOD1_MASK) != 0;
-        let selection = this.getCurrentSelection(false);
-        if (isCtrl && isShift && ((symbol == Gdk.KEY_Z) || (symbol == Gdk.KEY_z))) {
+        }
+
+        const symbol = event.get_keyval()[1];
+        const isCtrl = (event.get_state()[1] & Gdk.ModifierType.CONTROL_MASK) != 0;
+        const isShift = (event.get_state()[1] & Gdk.ModifierType.SHIFT_MASK) != 0;
+        const isAlt = (event.get_state()[1] & Gdk.ModifierType.MOD1_MASK) != 0;
+        const selection = this.getCurrentSelection(false);
+        if (symbol == Gdk.KEY_Home) {
+            this._setIconAsSelected(this._getTopLeftIcon());
+            return true;
+        } else if (symbol == Gdk.KEY_End) {
+            this._setIconAsSelected(this._getBottomRightIcon());
+            return true;
+        } else if (isCtrl && (symbol === Gdk.KEY_space)) {
+            const selected = this._getCurrentKeyboardIcon();
+            if (selected !== null) {
+                selected.toggleSelected();
+                return true;
+            }
+        } else if (isCtrl && isShift && ((symbol == Gdk.KEY_Z) || (symbol == Gdk.KEY_z))) {
             this._doRedo();
             return true;
         } else if (isCtrl && ((symbol == Gdk.KEY_Z) || (symbol == Gdk.KEY_z))) {
@@ -925,7 +1013,7 @@ var DesktopManager = class {
             Prefs.gtkSettings.set_boolean('show-hidden', !this._showHidden);
             return true;
         } else if (isCtrl && ((symbol == Gdk.KEY_F) || (symbol == Gdk.KEY_f))) {
-            this.findFiles();
+            this.findFiles(window);
             return true;
         } else if (symbol == Gdk.KEY_Escape) {
             this.unselectAll();
@@ -936,13 +1024,19 @@ var DesktopManager = class {
         } else if (isCtrl && isShift && ((symbol == Gdk.KEY_N) || (symbol == Gdk.KEY_n))) {
             this.doNewFolder();
             return true;
-        } else if (symbol == Gdk.KEY_Menu) {
+        } else if ((symbol == Gdk.KEY_Menu) || ((symbol == Gdk.KEY_F10) && (isShift))) {
             if (selection) {
                 this.fileItemMenu.showMenu(selection[0], event, true);
             } else {
                 this._prepareMenu();
                 this._menu.popup_at_pointer(event);
             }
+            return true;
+        } else if (isCtrl && (symbol == Gdk.KEY_plus)) {
+            Prefs.increase_icon_size();
+            return true;
+        } else if (isCtrl && (symbol == Gdk.KEY_minus)) {
+            Prefs.decrease_icon_size();
             return true;
         } else {
             if (this.ignoreKeys.includes(symbol)) {
@@ -965,21 +1059,8 @@ var DesktopManager = class {
                         windowError.timeoutClose(2000);
                         return true;
                     }
-                    this.searchEventTime = GLib.get_monotonic_time();
-                    if (!this.keypressTimeoutID) {
-                        this.keypressTimeoutID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-                            if (GLib.get_monotonic_time() - this.searchEventTime < 1500000) {
-                                return true;
-                            }
-                            this.searchString = null;
-                            this.keypressTimeoutID = null;
-                            if (this._findFileWindow) {
-                                this._findFileWindow.response(Gtk.ResponseType.OK);
-                            }
-                            return false;
-                        });
-                    }
-                    this.findFiles(this.searchString);
+                    this._refreshSearchTimeout();
+                    this.findFiles(window, this.searchString);
                 }
             }
             return true;
@@ -988,11 +1069,47 @@ var DesktopManager = class {
     }
 
     unselectAll() {
-        this._fileList.map(f => f.unsetSelected());
+        this._fileList.map(f => {
+            f.unsetSelected();
+            f.isKeyboardSelected = false;
+        });
     }
 
-    findFiles(text) {
+    _refreshSearchTimeout() {
+        if (this.keypressTimeoutID) {
+            GLib.source_remove(this.keypressTimeoutID);
+            this.keypressTimeoutID = null;
+        }
+        if (Prefs.a11YKeyboard) {
+            // if the user has enabled any keyboard assistive technology,
+            // disable the timeout to hide the search window
+            if (Prefs.a11YKeyboard.get_boolean('stickykeys-enable') ||
+                Prefs.a11YKeyboard.get_boolean('slowkeys-enable') ||
+                Prefs.a11YKeyboard.get_boolean('bouncekeys-enable') ||
+                Prefs.a11YKeyboard.get_boolean('mousekeys-enable')) {
+                    return;
+            }
+        }
+        if (Prefs.a11YApplications) {
+            // if the user has enabled the screen reader,
+            // disable the timeout to hide the search window
+            if (Prefs.a11YApplications.get_boolean('screen-reader-enabled')) {
+                return;
+            }
+        }
+
+        this.keypressTimeoutID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+            this.searchString = null;
+            this.keypressTimeoutID = null;
+            if (this._findFileWindow) {
+                this._findFileWindow.response(Gtk.ResponseType.OK);
+            }
+            return false;
+        });
+    }
+    findFiles(window, text) {
         this._findFileWindow = new Gtk.Dialog({
+            transientFor: window,
             use_header_bar: true,
             window_position: Gtk.WindowPosition.CENTER_ON_PARENT,
             resizable: false,
@@ -1007,12 +1124,13 @@ var DesktopManager = class {
         this._findFileTextArea = new Gtk.Entry();
         contentArea.pack_start(this._findFileTextArea, true, true, 5);
         contentArea = undefined;
-        this._findFileTextArea.connect('activate', () => {
+        this._findFileSignalManager = new SignalManager.SignalManager();
+        this._findFileSignalManager.connectSignal(this._findFileTextArea, 'activate', () => {
             if (this._findFileButton.sensitive) {
                 this._findFileWindow.response(Gtk.ResponseType.OK);
             }
         });
-        this._findFileTextArea.connect('changed', () => {
+        this._findFileSignalManager.connectSignal(this._findFileTextArea, 'changed', () => {
             let context = this._findFileTextArea.get_style_context();
             if (this.scanForFiles(this._findFileTextArea.text, true)) {
                 this._findFileButton.sensitive = true;
@@ -1026,7 +1144,7 @@ var DesktopManager = class {
                     context.add_class('not-found');
                 }
             }
-            this.searchEventTime = GLib.get_monotonic_time();
+            this._refreshSearchTimeout();
         });
         this._findFileTextArea.grab_focus_without_selecting();
         if (text) {
@@ -1036,13 +1154,14 @@ var DesktopManager = class {
             this.scanForFiles(null);
         }
         this._findFileWindow.show_all();
-        this._findFileWindow.connect('close', () => {
+        this._findFileSignalManager.connectSignal(this._findFileWindow, 'close', () => {
             this._findFileWindow.response(Gtk.ResponseType.CANCEL);
         });
-        this._findFileWindow.connect('response', (actor, retval) => {
+        this._findFileSignalManager.connectSignal(this._findFileWindow, 'response', (actor, retval) => {
             if (retval == Gtk.ResponseType.CANCEL) {
                 this.unselectAll();
             }
+            this._findFileSignalManager.disconnectAllSignals();
             this._findFileWindow.destroy();
             this._findFileWindow = null;
         });
@@ -1065,9 +1184,7 @@ var DesktopManager = class {
     }
 
     _createDesktopBackgroundMenu() {
-        this._menu = new Gtk.Menu();
-        this._menu.get_style_context().add_class('desktopmenu');
-
+        this._menu = DesktopIconsUtil.createDesktopMenu();
 
         let newFolder = new Gtk.MenuItem({label: _('New Folder')});
         newFolder.connect('activate', () => this.doNewFolder());
@@ -1110,42 +1227,6 @@ var DesktopManager = class {
         newFile.connect('activate', () => this.doNewFile());
         this._menu.add(newFile);
 
-        // this._addSortingMenu();
-
-        // this._menu.add(new Gtk.SeparatorMenuItem());
-
-        // this._changeBackgroundMenuItem = new Gtk.MenuItem({label: _('Change Background…')});
-        // this._changeBackgroundMenuItem.connect('activate', () => {
-        //     let desktopFile = Gio.DesktopAppInfo.new('gnome-background-panel.desktop');
-        //     const context = Gdk.Display.get_default().get_app_launch_context();
-        //     context.set_timestamp(Gtk.get_current_event_time());
-        //     desktopFile.launch([], context);
-        // });
-        // this._menu.add(this._changeBackgroundMenuItem);
-
-        // this._menu.add(new Gtk.SeparatorMenuItem());
-
-        // this._settingsMenuItem = new Gtk.MenuItem({label: _('Desktop Icons Settings')});
-        // if (GLib.getenv('XDG_CURRENT_DESKTOP').split(':').includes('ubuntu')) {
-        //     this._settingsMenuItem.connect("activate", () => {
-        //         const desktopFile = Gio.DesktopAppInfo.new('gnome-ubuntu-panel.desktop');
-        //         const context = Gdk.Display.get_default().get_app_launch_context();
-        //         context.set_timestamp(Gtk.get_current_event_time());
-        //         desktopFile.launch([], context);
-        //     });
-        // } else {
-        //     this._settingsMenuItem.connect("activate", () => Prefs.showPreferences());
-        // }
-        // this._menu.add(this._settingsMenuItem);
-
-        // this._displaySettingsMenuItem = new Gtk.MenuItem({label: _('Display Settings')});
-        // this._displaySettingsMenuItem.connect('activate', () => {
-        //     let desktopFile = Gio.DesktopAppInfo.new('gnome-display-panel.desktop');
-        //     const context = Gdk.Display.get_default().get_app_launch_context();
-        //     context.set_timestamp(Gtk.get_current_event_time());
-        //     desktopFile.launch([], context);
-        // });
-        // this._menu.add(this._displaySettingsMenuItem);
 
         this._menu.show_all();
     }
@@ -1661,7 +1742,7 @@ var DesktopManager = class {
     }
 
     doTrash() {
-        const selection = this._fileList.filter(i => i.isSelected && !i.isSpecial).map(i =>
+        const selection = this._fileList.filter(i => (i.isSelected || i.isKeyboardSelected) && !i.isSpecial).map(i =>
             i.file.get_uri());
 
         if (selection.length) {
@@ -1670,11 +1751,11 @@ var DesktopManager = class {
     }
 
     doDeletePermanently() {
-        const toDelete = this._fileList.filter(i => i.isSelected && !i.isSpecial).map(i =>
+        const toDelete = this._fileList.filter(i => (i.isSelected || i.isKeyboardSelected) && !i.isSpecial).map(i =>
             i.file.get_uri());
 
         if (!toDelete.length) {
-            if (this._fileList.some(i => i.isSelected && i.isTrash)) {
+            if (this._fileList.some(i => (i.isSelected || i.isKeyboardSelected) && i.isTrash)) {
                 this.doEmptyTrash();
             }
             return;
@@ -1698,7 +1779,7 @@ var DesktopManager = class {
 
     checkIfDirectoryIsSelected() {
         for (let item of this._fileList) {
-            if (item.isSelected && item.isDirectory) {
+            if ((item.isSelected || item.isKeyboardSelected) && item.isDirectory) {
                 return true;
             }
         }
@@ -1708,7 +1789,7 @@ var DesktopManager = class {
     getCurrentSelection(getUri) {
         let listToTrash = [];
         for (let fileItem of this._fileList) {
-            if (fileItem.isSelected) {
+            if ((fileItem.isSelected) || (fileItem.isKeyboardSelected)) {
                 if (getUri) {
                     listToTrash.push(fileItem.file.get_uri());
                 } else {
@@ -1726,7 +1807,7 @@ var DesktopManager = class {
     getNumberOfSelectedItems() {
         let count = 0;
         for (let item of this._fileList) {
-            if (item.isSelected) {
+            if ((item.isSelected) || (item.isKeyboardSelected)) {
                 count++;
             }
         }
@@ -1885,7 +1966,7 @@ var DesktopManager = class {
     }
 
     _addSortingSubMenu() {
-        this._arrangeSubMenu = new Gtk.Menu();
+        this._arrangeSubMenu = DesktopIconsUtil.createDesktopMenu();
         this._ArrangeByMenuItem.set_submenu(this._arrangeSubMenu);
 
         this._keepArrangedMenuItem = new Gtk.CheckMenuItem({label: _('Keep Arranged...')});

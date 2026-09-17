@@ -311,13 +311,6 @@ var FileItemMenu = class {
         if (fileItem.isAllSelectable && !this._desktopManager.checkIfSpecialFilesAreSelected() && (selectedItemsNum >= 1)) {
             this._addSeparator();
 
-            // if (!fileItem.isDirectory) {
-            //     this._addElementToMenu(
-            //         _('Send to…'),
-            //         this._mailFilesFromSelection.bind(this)
-            //     );
-            // }
-
             if (fileItem.canRename && (selectedItemsNum == 1)) {
                 this._addElementToMenu(
                     _('Rename…'),
@@ -381,13 +374,6 @@ var FileItemMenu = class {
                 _('Properties'),
                 this._onPropertiesClicked.bind(this)
             );
-
-            // this._addSeparator();
-
-            // this._addElementToMenu(
-            //     selectedItemsNum > 1 ? _('Show All in Files') : _('Show in Files'),
-            //     this._onShowInFilesClicked.bind(this)
-            // );
         }
 
         this._menu.show_all();
@@ -557,24 +543,6 @@ var FileItemMenu = class {
         }
         return false;
     }
-
-    // _mailFilesFromSelection() {
-    //     if (this._desktopManager.checkIfDirectoryIsSelected()) {
-    //         let WindowError = new ShowErrorPopup.ShowErrorPopup(_('Can not email a Directory'),
-    //             _('Selection includes a Directory, compress the directory to a file first.'),
-    //             false);
-    //         WindowError.run();
-    //         return;
-    //     }
-    //     let xdgEmailCommand = [];
-    //     xdgEmailCommand.push('xdg-email');
-    //     for (let fileItem of this._desktopManager.getCurrentSelection(false)) {
-    //         fileItem.unsetSelected();
-    //         xdgEmailCommand.push('--attach');
-    //         xdgEmailCommand.push(fileItem.file.get_path());
-    //     }
-    //     DesktopIconsUtil.trySpawn(null, xdgEmailCommand);
-    // }
 
     _doCompressFilesFromSelection() {
         let desktopFolder = DesktopIconsUtil.getDesktopDir();

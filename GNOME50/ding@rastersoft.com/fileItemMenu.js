@@ -269,33 +269,6 @@ var FileItemMenu = class {
                 () => this._moveOrCopySelection(true)
             ).set_sensitive(!allowCutCopyTrash);
 
-            // if (fileItem.canRename && (selectedItemsNum == 1)) {
-            //     this._addElementToMenu(
-            //         _('Rename…'),
-            //         () => {
-            //             this._desktopManager.doRename(this._currentFileItem, false);
-            //         }
-            //     );
-            // }
-
-            // this._addSeparator();
-
-            // this._addElementToMenu(
-            //     _('Move to Trash'),
-            //     () => {
-            //         this._desktopManager.doTrash();
-            //     }
-            // ).set_sensitive(!allowCutCopyTrash);
-
-            // if (Prefs.nautilusSettings.get_boolean('show-delete-permanently')) {
-            //     this._addElementToMenu(
-            //         _('Delete permanently'),
-            //         () => {
-            //             this._desktopManager.doDeletePermanently();
-            //         }
-            //     ).set_sensitive(!allowCutCopyTrash);
-            // }
-
             if (fileItem.isValidDesktopFile && !this._desktopManager.writableByOthers && !fileItem.writableByOthers && (selectedItemsNum == 1)) {
                 this._addSeparator();
                 this._addElementToMenu(
@@ -343,38 +316,6 @@ var FileItemMenu = class {
 
         if (fileItem.isAllSelectable && !this._desktopManager.checkIfSpecialFilesAreSelected() && (selectedItemsNum >= 1)) {
             this._addSeparator();
-
-            // let addedExtractHere = false;
-            // if (this._getExtractableAutoAr()) {
-            //     addedExtractHere = true;
-            //     this._addElementToMenu(
-            //         _('Extract Here'),
-            //         () => this._desktopManager.getCurrentSelection(false).forEach(f =>
-            //             this._desktopManager.autoAr.extractFile(f.fileName)));
-            // }
-            // if (selectedItemsNum == 1 && this._getExtractable()) {
-            //     if (!addedExtractHere) {
-            //         this._addElementToMenu(
-            //             _('Extract Here'),
-            //             () => {
-            //                 this._extractFileFromSelection(true);
-            //             }
-            //         );
-            //     }
-            //     this._addElementToMenu(
-            //         _('Extract To...'),
-            //         () => {
-            //             this._extractFileFromSelection(false);
-            //         }
-            //     );
-            // }
-
-            // if (!fileItem.isDirectory) {
-            //     this._addElementToMenu(
-            //         _('Send to...'),
-            //         this._mailFilesFromSelection.bind(this)
-            //     );
-            // }
 
             if (fileItem.canRename && (selectedItemsNum == 1)) {
                 this._addElementToMenu(
@@ -431,13 +372,6 @@ var FileItemMenu = class {
                 this._doOpenWithVSCode.bind(this)
             );
 
-            // this._addElementToMenu(
-            //     Gettext.ngettext('New Folder with {0} item', 'New Folder with {0} items', selectedItemsNum).replace('{0}', selectedItemsNum),
-            //     () => {
-            //         this._doNewFolderFromSelection(this._currentFileItem);
-            //     }
-            // );
-
             this._addSeparator();
         }
 
@@ -446,13 +380,6 @@ var FileItemMenu = class {
                 _('Properties'),
                 this._onPropertiesClicked.bind(this)
             );
-
-            // this._addSeparator();
-
-            // this._addElementToMenu(
-            //     selectedItemsNum > 1 ? _('Show All in Files') : _('Show in Files'),
-            //     this._onShowInFilesClicked.bind(this)
-            // );
         }
 
 
@@ -635,24 +562,6 @@ var FileItemMenu = class {
         }
         return false;
     }
-
-    // _mailFilesFromSelection() {
-    //     if (this._desktopManager.checkIfDirectoryIsSelected()) {
-    //         let WindowError = new ShowErrorPopup.ShowErrorPopup(_('Can not email a Directory'),
-    //             _('Selection includes a Directory, compress the directory to a file first.'),
-    //             false);
-    //         WindowError.run();
-    //         return;
-    //     }
-    //     let xdgEmailCommand = [];
-    //     xdgEmailCommand.push('xdg-email');
-    //     for (let fileItem of this._desktopManager.getCurrentSelection(false)) {
-    //         fileItem.unsetSelected();
-    //         xdgEmailCommand.push('--attach');
-    //         xdgEmailCommand.push(fileItem.file.get_path());
-    //     }
-    //     DesktopIconsUtil.trySpawn(null, xdgEmailCommand);
-    // }
 
     _doCompressFilesFromSelection() {
         let desktopFolder = DesktopIconsUtil.getDesktopDir();

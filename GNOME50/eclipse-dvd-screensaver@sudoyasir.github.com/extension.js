@@ -256,6 +256,7 @@ export default class EclipseDVDExtension extends Extension {
         // Capture any keyboard or mouse event to hide screensaver
         this._capturedEventId = global.stage.connect('captured-event', (actor, event) => {
             const type = event.type();
+            // TODO: detect keyboard events as well (only cursor tracked for now)
             if (type === Clutter.EventType.KEY_PRESS ||
                 type === Clutter.EventType.BUTTON_PRESS ||
                 type === Clutter.EventType.MOTION) {
